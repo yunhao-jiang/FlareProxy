@@ -1,7 +1,7 @@
 import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import requests
+import requests, time
 
 # Get FlareSolverr URL from environment variable or use default
 FLARESOLVERR_URL = os.getenv("FLARESOLVERR_URL", "http://flaresolverr:8191/v1")
@@ -97,10 +97,12 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     # Create a session before starting the server
+    
+    time.sleep(15) # this is to allow FlareSolverr boots up and ready to accept session creation
     SESSION_ID = create_session()
     
     # List sessions to print the created session
-    list_sessions()
+    # list_sessions()
     
     server_address = ("", 8080)
     httpd = HTTPServer(server_address, ProxyHTTPRequestHandler)

@@ -21,6 +21,8 @@ curl --proxy 127.0.0.1:8080 http://www.google.com
 ```
 You can use it as a proxy in [changedetection](https://github.com/dgtlmoon/changedetection.io), just navigate to settings -> CAPTCHA&Proxies and add it as an extra proxy in the list. Then you can setup your watch using any fetch method.
 
+<img width="1814" height="810" alt="CleanShot 2025-11-11 at 21 22 46@2x" src="https://github.com/user-attachments/assets/9898510e-502e-4c15-adcd-1820c7d495c9" />
+
 ## Docker Compose
 Add the snippet to your docker compose stack, i.e.:
 

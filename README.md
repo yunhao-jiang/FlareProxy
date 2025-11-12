@@ -32,19 +32,22 @@ Add the snippet to your docker compose stack, i.e.:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_HTML=${LOG_HTML:-false}
       - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
-      - TZ=Europe/Rome
+      - TZ=YOUR_TZ_STRING/HERE #https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 #    ports:
 #    - "8191:8191"
-    restart: always
+    restart: unless-stopped
   flareproxy:
     image: flareproxy
     container_name: flareproxy
     environment:
     - FLARESOLVERR_URL=http://flaresolverr:8191/v1
-    - TZ=Europe/Rome
+    - TZ=YOUR_TZ_STRING/HERE #https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 #    ports:
 #    - "8080:8080"
-    restart: always
+    restart: unless-stopped
+    depends_on: 
+      flaresolverr:
+        condition: service_started #this is how to make sure when flaresolverr restarted, the flare proxy will restart as well (and then wait 15s to create session)
 ```
 
 

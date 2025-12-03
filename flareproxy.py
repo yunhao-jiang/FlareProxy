@@ -165,74 +165,85 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
         self.handle_request()
 
     def do_CONNECT(self):
-        """Handle CONNECT requests by establishing a direct TCP tunnel (not routed through FlareSolverr)."""
-        try:
-            # The path for CONNECT is usually "host:port"
-            host_port = self.path
-            if ":" in host_port:
-                host, port_str = host_port.split(":", 1)
-                port = int(port_str)
-            else:
-                host = host_port
-                port = 443  # default to 443 if not specified
+        self.send_response(501, "Not Implemented")
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        error_message = (
+            "CONNECT method is not supported by FlareProxy.\n\n"
+            "Please use HTTP URLs instead of HTTPS URLs in your client configuration.\n"
+            "Example: http://www.discogs.com/sell/release/265683\n\n"
+            "The proxy will automatically convert HTTP requests to HTTPS when forwarding to FlareSolverr, "
+            "so your requests will still be secure.\n"
+        )
+        self.wfile.write(error_message.encode("utf-8"))
+    #     """Handle CONNECT requests by establishing a direct TCP tunnel (not routed through FlareSolverr)."""
+    #     try:
+    #         # The path for CONNECT is usually "host:port"
+    #         host_port = self.path
+    #         if ":" in host_port:
+    #             host, port_str = host_port.split(":", 1)
+    #             port = int(port_str)
+    #         else:
+    #             host = host_port
+    #             port = 443  # default to 443 if not specified
 
-            # Establish connection to target host directly
-            remote = socket.create_connection((host, port), timeout=10)
-            # Inform the client that the connection is established
-            self.send_response(200, "Connection Established")
-            self.send_header("Proxy-agent", "FlareProxy/1.0")
-            self.end_headers()
+    #         # Establish connection to target host directly
+    #         remote = socket.create_connection((host, port), timeout=10)
+    #         # Inform the client that the connection is established
+    #         self.send_response(200, "Connection Established")
+    #         self.send_header("Proxy-agent", "FlareProxy/1.0")
+    #         self.end_headers()
 
-            # Hijack the underlying sockets and forward data both ways
-            try:
-                self._tunnel(self.connection, remote)
-            finally:
-                try:
-                    remote.close()
-                except Exception:
-                    pass
-        except Exception as e:
-            # If unable to CONNECT directly, return an error to client
-            self.send_response(502)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            error_message = json.dumps({"error": f"CONNECT failure: {str(e)}"})
-            self.wfile.write(error_message.encode("utf-8"))
+    #         # Hijack the underlying sockets and forward data both ways
+    #         try:
+    #             self._tunnel(self.connection, remote)
+    #         finally:
+    #             try:
+    #                 remote.close()
+    #             except Exception:
+    #                 pass
+    #     except Exception as e:
+    #         # If unable to CONNECT directly, return an error to client
+    #         self.send_response(502)
+    #         self.send_header("Content-Type", "application/json")
+    #         self.end_headers()
+    #         error_message = json.dumps({"error": f"CONNECT failure: {str(e)}"})
+    #         self.wfile.write(error_message.encode("utf-8"))
 
-    def _tunnel(self, client_sock, remote_sock, timeout=60):
-        """Bidirectionally forward data between client_sock and remote_sock until closed."""
-        client_sock.setblocking(0)
-        remote_sock.setblocking(0)
-        sockets = [client_sock, remote_sock]
-        max_idle = timeout
-        while True:
-            try:
-                rlist, _, xlist = select.select(sockets, [], sockets, 1)
-            except Exception:
-                break
+    # def _tunnel(self, client_sock, remote_sock, timeout=60):
+    #     """Bidirectionally forward data between client_sock and remote_sock until closed."""
+    #     client_sock.setblocking(0)
+    #     remote_sock.setblocking(0)
+    #     sockets = [client_sock, remote_sock]
+    #     max_idle = timeout
+    #     while True:
+    #         try:
+    #             rlist, _, xlist = select.select(sockets, [], sockets, 1)
+    #         except Exception:
+    #             break
 
-            if xlist:
-                break
+    #         if xlist:
+    #             break
 
-            if rlist:
-                for r in rlist:
-                    try:
-                        data = r.recv(8192)
-                        if not data:
-                            return
-                        if r is client_sock:
-                            dest = remote_sock
-                        else:
-                            dest = client_sock
-                        dest.sendall(data)
-                        max_idle = timeout  # reset idle timer on activity
-                    except Exception:
-                        return
-            else:
-                # no activity, decrement idle timer and break if exceeded
-                max_idle -= 1
-                if max_idle <= 0:
-                    return
+    #         if rlist:
+    #             for r in rlist:
+    #                 try:
+    #                     data = r.recv(8192)
+    #                     if not data:
+    #                         return
+    #                     if r is client_sock:
+    #                         dest = remote_sock
+    #                     else:
+    #                         dest = client_sock
+    #                     dest.sendall(data)
+    #                     max_idle = timeout  # reset idle timer on activity
+    #                 except Exception:
+    #                     return
+    #         else:
+    #             # no activity, decrement idle timer and break if exceeded
+    #             max_idle -= 1
+    #             if max_idle <= 0:
+    #                 return
 
 
 if __name__ == "__main__":

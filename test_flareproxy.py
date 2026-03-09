@@ -1,6 +1,6 @@
 import io
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from flareproxy import ProxyHTTPRequestHandler
 
@@ -14,6 +14,7 @@ class DummyHandler:
         self.end_headers_called = False
         self._get_target_url = ProxyHTTPRequestHandler._get_target_url
         self._should_use_flaresolverr = ProxyHTTPRequestHandler._should_use_flaresolverr
+        self._send_non_200_webhook = ProxyHTTPRequestHandler._send_non_200_webhook
 
     def send_response(self, code, *_):
         self.response_code = code
@@ -57,6 +58,39 @@ class ProxyHandlerTests(unittest.TestCase):
         self.assertEqual(handler.response_code, 200)
         self.assertEqual(handler.headers["Content-Type"], "application/json")
         self.assertEqual(handler.wfile.getvalue(), b'{"ok": true}')
+
+    @patch.dict("os.environ", {"NON_200_WEBHOOK_URL": "http://webhook.local/notify"}, clear=False)
+    @patch("flareproxy.requests.post")
+    def test_handle_request_posts_webhook_when_flaresolverr_returns_non_200(self, mock_post):
+        mock_post.side_effect = [
+            MagicMock(status_code=500, json=MagicMock(return_value={"solution": {"response": ""}})),
+            MagicMock(status_code=200),
+        ]
+        handler = DummyHandler("http://example.com/index.html")
+
+        ProxyHTTPRequestHandler.handle_request(handler)
+
+        self.assertEqual(handler.response_code, 500)
+        self.assertEqual(mock_post.call_count, 2)
+        mock_post.assert_has_calls(
+            [
+                call(
+                    "http://flaresolverr:8191/v1",
+                    headers={"Content-Type": "application/json"},
+                    json={
+                        "cmd": "request.get",
+                        "url": "https://example.com/index.html",
+                        "maxTimeout": 120000,
+                    },
+                ),
+                call(
+                    "http://webhook.local/notify",
+                    data=b"https://example.com/index.html",
+                    headers={"Content-Type": "text/plain; charset=utf-8"},
+                    timeout=10,
+                ),
+            ]
+        )
 
     @patch("flareproxy.socket.create_connection")
     def test_do_connect_creates_tunnel(self, mock_create_connection):

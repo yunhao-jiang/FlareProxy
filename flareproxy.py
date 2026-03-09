@@ -77,7 +77,7 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
                 data = {
                     "cmd": "request.get",
                     "url": target_url,
-                    "maxTimeout": 60000
+                    "maxTimeout": 120000
                 }
 
                 if SESSION_ID:

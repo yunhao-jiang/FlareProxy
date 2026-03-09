@@ -13,7 +13,7 @@ class DummyHandler:
         self.headers = {}
         self.end_headers_called = False
         self._get_target_url = ProxyHTTPRequestHandler._get_target_url
-        self._should_use_flare_proxy = ProxyHTTPRequestHandler._should_use_flare_proxy
+        self._should_use_flaresolverr = ProxyHTTPRequestHandler._should_use_flaresolverr
 
     def send_response(self, code, *_):
         self.response_code = code
@@ -52,14 +52,14 @@ class ProxyHandlerTests(unittest.TestCase):
 
         ProxyHTTPRequestHandler.handle_request(handler)
 
-        mock_get.assert_called_once()
+        mock_get.assert_called_once_with("https://example.com/api/status", timeout=60)
         mock_post.assert_not_called()
         self.assertEqual(handler.response_code, 200)
         self.assertEqual(handler.headers["Content-Type"], "application/json")
         self.assertEqual(handler.wfile.getvalue(), b'{"ok": true}')
 
     @patch("flareproxy.socket.create_connection")
-    def test_do_connect_directly_creates_tunnel(self, mock_create_connection):
+    def test_do_connect_creates_tunnel(self, mock_create_connection):
         upstream_socket = MagicMock()
         connection_context = MagicMock()
         connection_context.__enter__.return_value = upstream_socket
@@ -75,6 +75,7 @@ class ProxyHandlerTests(unittest.TestCase):
 
         mock_create_connection.assert_called_once_with(("example.com", 443))
         handler._tunnel_connection.assert_called_once_with(upstream_socket)
+        handler.handle_request.assert_not_called()
         self.assertEqual(handler.response_code, 200)
 
 

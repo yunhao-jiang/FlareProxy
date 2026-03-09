@@ -13,7 +13,7 @@ To run it replace the FLARESOLVERR_URL env var with the url of your FlareSolverr
 ```bash
 docker run -e FLARESOLVERR_URL=http://localhost:8191/v1 -p 8080:8080 flareproxy
 ```
-Optional: set `NON_200_WEBHOOK_URL` to receive a POST webhook (plain-text body with the requested URL) whenever FlareSolverr returns a non-200 status.
+Optional: set `NOTIFICATION_WEBHOOK` to receive a POST webhook (JSON body: `{"url":"<requested-url>"}`) whenever FlareSolverr returns a non-200 status.
 
 ## Usage
 Set FlareProxy as a proxy in your browser or in your agent. Please notice: use `http` protocol even if you want to fetch https resources because I'm too lazy to deal with SSL connections. FlareProxy will switch automatically to the https protocol to establish the upstream connection.

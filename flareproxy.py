@@ -71,7 +71,7 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
 
     @staticmethod
     def _send_non_200_webhook(target_url):
-        webhook_url = os.getenv("NON_200_WEBHOOK_URL", NON_200_WEBHOOK_URL)
+        webhook_url = NON_200_WEBHOOK_URL
         if not webhook_url:
             return
         try:

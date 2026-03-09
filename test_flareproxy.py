@@ -59,7 +59,7 @@ class ProxyHandlerTests(unittest.TestCase):
         self.assertEqual(handler.headers["Content-Type"], "application/json")
         self.assertEqual(handler.wfile.getvalue(), b'{"ok": true}')
 
-    @patch.dict("os.environ", {"NON_200_WEBHOOK_URL": "http://webhook.local/notify"}, clear=False)
+    @patch("flareproxy.NON_200_WEBHOOK_URL", "http://webhook.local/notify")
     @patch("flareproxy.requests.post")
     def test_handle_request_posts_webhook_when_flaresolverr_returns_non_200(self, mock_post):
         mock_post.side_effect = [

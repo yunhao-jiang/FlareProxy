@@ -91,11 +91,7 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(bytes(json_response.get("solution", {}).get("response", ""), "utf-8"))
             else:
-                response = requests.get(target_url, timeout=60)
-                self.send_response(response.status_code)
-                self.send_header("Content-Type", response.headers.get("Content-Type", "application/octet-stream"))
-                self.end_headers()
-                self.wfile.write(response.content)
+                raise Exception("extension not on whitelist")
 
         except Exception as e:
             self.send_response(500)

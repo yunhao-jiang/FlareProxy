@@ -1,6 +1,9 @@
 import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import select
+import socket
+from urllib.parse import urlparse
 import requests, time
 
 # Get FlareSolverr URL from environment variable or use default
@@ -54,30 +57,43 @@ def list_sessions():
 
 class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
 
+    @staticmethod
+    def _should_use_flare_proxy(url):
+        parsed_url = urlparse(url)
+        return parsed_url.path.lower().endswith(".html")
+
+    @staticmethod
+    def _get_target_url(url):
+        return url.replace("http", "https", 1)
+
     def handle_request(self):
         """Handle the core logic for GET and CONNECT requests."""
         try:
-            # Prepare the payload
-            headers = {"Content-Type": "application/json"}
-            data = {
-                "cmd": "request.get",
-                "url": self.path.replace("http", "https"),
-                "maxTimeout": 60000
-            }
-            
-            # Add session ID if available
-            if SESSION_ID:
-                data["session"] = SESSION_ID
+            target_url = self._get_target_url(self.path)
+            if self._should_use_flare_proxy(target_url):
+                headers = {"Content-Type": "application/json"}
+                data = {
+                    "cmd": "request.get",
+                    "url": target_url,
+                    "maxTimeout": 60000
+                }
 
-            # Send the POST request to FlareSolverr
-            response = requests.post(FLARESOLVERR_URL, headers=headers, json=data)
-            json_response = response.json()
+                if SESSION_ID:
+                    data["session"] = SESSION_ID
 
-            # Forward the response back to the client
-            self.send_response(response.status_code)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(bytes(json_response.get("solution", {}).get("response", ""), "utf-8"))
+                response = requests.post(FLARESOLVERR_URL, headers=headers, json=data)
+                json_response = response.json()
+
+                self.send_response(response.status_code)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(bytes(json_response.get("solution", {}).get("response", ""), "utf-8"))
+            else:
+                response = requests.get(target_url)
+                self.send_response(response.status_code)
+                self.send_header("Content-Type", response.headers.get("Content-Type", "application/octet-stream"))
+                self.end_headers()
+                self.wfile.write(response.content)
 
         except Exception as e:
             self.send_response(500)
@@ -92,7 +108,32 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_CONNECT(self):
         """Handle CONNECT requests."""
-        self.handle_request()
+        try:
+            host, port = self.path.split(":", 1)
+            port = int(port)
+            with socket.create_connection((host, port)) as upstream_socket:
+                self.send_response(200, "Connection Established")
+                self.end_headers()
+                self._tunnel_connection(upstream_socket)
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            error_message = json.dumps({"error": str(e)})
+            self.wfile.write(error_message.encode("utf-8"))
+
+    def _tunnel_connection(self, upstream_socket):
+        sockets = [self.connection, upstream_socket]
+        while True:
+            readable, _, exceptional = select.select(sockets, [], sockets)
+            if exceptional:
+                break
+            for source in readable:
+                data = source.recv(8192)
+                if not data:
+                    return
+                destination = upstream_socket if source is self.connection else self.connection
+                destination.sendall(data)
 
 
 if __name__ == "__main__":

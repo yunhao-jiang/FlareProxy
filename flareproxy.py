@@ -70,14 +70,14 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
         return urlunparse(parsed_url._replace(scheme="https"))
 
     @staticmethod
-    def _send_non_200_webhook(target_url):
+    def _send_non_200_webhook(target_url, status_code):
         webhook_url = NOTIFICATION_WEBHOOK
         if not webhook_url:
             return
         try:
             requests.post(
                 webhook_url,
-                json={"url": target_url},
+                json={"url": target_url, "statusCode": status_code},
                 timeout=10,
             )
         except Exception as e:
@@ -101,7 +101,7 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
                 response = requests.post(FLARESOLVERR_URL, headers=headers, json=data)
                 json_response = response.json()
                 if response.status_code != 200:
-                    self._send_non_200_webhook(target_url)
+                    self._send_non_200_webhook(target_url, response.status_code)
 
                 self.send_response(response.status_code)
                 self.send_header("Content-Type", "text/html; charset=utf-8")

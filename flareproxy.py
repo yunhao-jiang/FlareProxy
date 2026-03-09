@@ -8,6 +8,7 @@ import requests, time
 
 # Get FlareSolverr URL from environment variable or use default
 FLARESOLVERR_URL = os.getenv("FLARESOLVERR_URL", "http://flaresolverr:8191/v1")
+NOTIFICATION_WEBHOOK = os.getenv("NOTIFICATION_WEBHOOK")
 
 # Global variable to store session ID
 SESSION_ID = None
@@ -68,6 +69,20 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
         parsed_url = urlparse(url)
         return urlunparse(parsed_url._replace(scheme="https"))
 
+    @staticmethod
+    def _send_non_200_webhook(target_url):
+        webhook_url = NOTIFICATION_WEBHOOK
+        if not webhook_url:
+            return
+        try:
+            requests.post(
+                webhook_url,
+                json={"url": target_url},
+                timeout=10,
+            )
+        except Exception as e:
+            print(f"Error sending non-200 webhook: {e}")
+
     def handle_request(self):
         """Handle the core logic for GET and CONNECT requests."""
         try:
@@ -85,6 +100,8 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
 
                 response = requests.post(FLARESOLVERR_URL, headers=headers, json=data)
                 json_response = response.json()
+                if response.status_code != 200:
+                    self._send_non_200_webhook(target_url)
 
                 self.send_response(response.status_code)
                 self.send_header("Content-Type", "text/html; charset=utf-8")

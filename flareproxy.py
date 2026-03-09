@@ -108,42 +108,42 @@ class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
         """Handle GET requests."""
         self.handle_request()
 
-    def do_CONNECT(self):
-        """Handle CONNECT requests."""
-        try:
-            host, port = self.path.split(":", 1)
-            port = int(port)
-            if port < 1 or port > 65535:
-                raise ValueError("Port out of range")
-            with socket.create_connection((host, port)) as upstream_socket:
-                self.send_response(200, "Connection Established")
-                self.end_headers()
-                self._tunnel_connection(upstream_socket)
-        except ValueError as e:
-            self.send_response(400)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            error_message = json.dumps({"error": f"Invalid CONNECT target: {e}"})
-            self.wfile.write(error_message.encode("utf-8"))
-        except Exception as e:
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            error_message = json.dumps({"error": str(e)})
-            self.wfile.write(error_message.encode("utf-8"))
+    # def do_CONNECT(self):
+    #     """Handle CONNECT requests."""
+    #     try:
+    #         host, port = self.path.split(":", 1)
+    #         port = int(port)
+    #         if port < 1 or port > 65535:
+    #             raise ValueError("Port out of range")
+    #         with socket.create_connection((host, port)) as upstream_socket:
+    #             self.send_response(200, "Connection Established")
+    #             self.end_headers()
+    #             self._tunnel_connection(upstream_socket)
+    #     except ValueError as e:
+    #         self.send_response(400)
+    #         self.send_header("Content-Type", "application/json")
+    #         self.end_headers()
+    #         error_message = json.dumps({"error": f"Invalid CONNECT target: {e}"})
+    #         self.wfile.write(error_message.encode("utf-8"))
+    #     except Exception as e:
+    #         self.send_response(500)
+    #         self.send_header("Content-Type", "application/json")
+    #         self.end_headers()
+    #         error_message = json.dumps({"error": str(e)})
+    #         self.wfile.write(error_message.encode("utf-8"))
 
-    def _tunnel_connection(self, upstream_socket):
-        sockets = [self.connection, upstream_socket]
-        while True:
-            readable, _, exceptional = select.select(sockets, [], sockets)
-            if exceptional:
-                break
-            for source in readable:
-                data = source.recv(TUNNEL_BUFFER_SIZE)
-                if not data:
-                    return
-                destination = upstream_socket if source is self.connection else self.connection
-                destination.sendall(data)
+    # def _tunnel_connection(self, upstream_socket):
+    #     sockets = [self.connection, upstream_socket]
+    #     while True:
+    #         readable, _, exceptional = select.select(sockets, [], sockets)
+    #         if exceptional:
+    #             break
+    #         for source in readable:
+    #             data = source.recv(TUNNEL_BUFFER_SIZE)
+    #             if not data:
+    #                 return
+    #             destination = upstream_socket if source is self.connection else self.connection
+    #             destination.sendall(data)
 
 
 if __name__ == "__main__":
